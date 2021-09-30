@@ -1,9 +1,12 @@
 # Carbon_GAP
-Repository for Carbon GAP-20 Model &amp; Training Data. For testing and validation data concerning the model, please see:
+# Repository for Carbon GAP-20 Model &amp; Training Data. 
 
-P. Rowe, V. Deringer, P. Gasparotto, G. Csányi, A. Michaelides, “An accurate and transferable machine learning potential for carbon”, J. Chem. Phys., 153, 034702, (2020)
+For testing and validation data concerning the model, please see: P. Rowe, V. Deringer, P. Gasparotto, G. Csányi, A. Michaelides, “An accurate and transferable machine learning potential for carbon”, J. Chem. Phys., 153, 034702, (2020)
 
 This paper has been made open source and is available to read for free at: https://discovery.ucl.ac.uk/id/eprint/10104458/
+
+
+# Additional Information
 
 This potential a copy of the permanently archived version on the Cambridge Apollo Data Repository: https://aspace.repository.cam.ac.uk/handle/1810/307452?show=full
 
