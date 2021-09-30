@@ -5,7 +5,7 @@ This potential is also permanently archives on the Cambridge Apollo Data Reposit
 
 For installation instructions of the supporting GAP and QUIP codes, please see: https://libatoms.github.io/GAP/installation.html
 
-The GAP potential and training data here may be used under the Creative Commons license, for the license conditions of the supporting QUIP and GAP source code, however, please see: https://github.com/libAtoms/GAP/blob/main/LICENSE.md and http://www.libatoms.org/gap/gap_download.html
+The GAP potential and training data here may be used under the Creative Commons (CC BY 4.0) license, for the license conditions of the supporting QUIP and GAP source code, however, please see: https://github.com/libAtoms/GAP/blob/main/LICENSE.md and http://www.libatoms.org/gap/gap_download.html
 
 If making use of this potential, please cite the following papers:
 
