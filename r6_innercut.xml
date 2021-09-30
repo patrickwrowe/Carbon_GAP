@@ -1,0 +1,37 @@
+<quip>
+  <Glue_params n_types="1">
+  <per_type_data atomic_num="6" type="1">
+    <!-- C -->
+    <density num_points="2" density_y1="-0.4144" density_yn="0.0">
+      <point a="0.821917808219178" rho="0.00001"/>
+      <point a="1.027397260273973" rho="0.00002"/>
+    </density>
+    <potential_density num_points="2">
+      <point rho="0.00001" E="0.0"/>
+      <point rho="0.00002" E="0.0"/>
+    </potential_density>
+  </per_type_data>
+  <per_pair_data type1="1" type2="1">
+    <potential_pair num_points="18" y1="0.0" yn="0.0">
+      <point r="3.0"  E="0.0"/>
+      <point r="4.0"  E="-0.00490249"/>
+      <point r="4.1"  E="-0.0042274"/>
+      <point r="4.2"  E="-0.00365831"/>
+      <point r="4.3"  E="-0.00317662"/>
+      <point r="4.4"  E="-0.00276733"/>
+      <point r="4.5"  E="-0.00241825"/>
+      <point r="5.0"  E="-0.00128516"/>
+      <point r="5.5"  E="-0.000725438"/>
+      <point r="6.0"  E="-0.000430397"/>
+      <point r="6.5"  E="-0.000266254"/>
+      <point r="7.0"  E="-0.000170682"/>
+      <point r="7.5"  E="-0.000112826"/>
+      <point r="8.0"  E="-7.66013e-5"/>
+      <point r="8.5"  E="-5.3243e-5"/>
+      <point r="9.0"  E="-3.77852e-5"/>
+      <point r="9.5"  E="-2.73171e-5"/>
+      <point r="10.0" E="0.0"/>
+    </potential_pair>
+ </per_pair_data>
+</Glue_params>
+</quip>
