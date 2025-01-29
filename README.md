@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/c22f71e2-181e-446e-8ecc-47cb37948e1a)# Carbon GAP-20 Model
+# Carbon GAP-20 Model
 
 ![image](https://github.com/user-attachments/assets/6450caf3-06c1-475f-ae6d-78588090dd74)
 Reduced dimensionality sketch-map representation carbon structure training dataset for the GAP-20 model. Embedded space is created using the same features the model is trained on. Points are coloured according to their energy, while contours indicate the density of the database population in a particular region. Select structures are identified for graphite, diamond, hexagonal diamond (Lonsdaleite), amorphous carbon and fullerenes.
