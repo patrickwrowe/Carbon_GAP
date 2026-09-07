@@ -211,9 +211,25 @@ def extract_lattice_parameters(staging_root: Path) -> None:
         shutil.rmtree(benchmark_dir)
 
     bulk_root = SRC / "Tests" / "lattice_parameters" / "Bulk_Structures"
+
+    # The Bulk_Structures (9,9) cell is a defect-generation working copy: 174 atoms
+    # with 6 two-coordinated sites, where an intact 5-cell armchair tube needs 180.
+    # The formation-energy reference is an intact 36-atom unit cell at the same level
+    # of theory (optB88-vdW, ENCUT 500, ISPIN 1, ISIF 2).
+    overrides = {
+        "Nanotube_9_9": SRC
+        / "Tests"
+        / "nanotubes_formation_energy"
+        / "Reference"
+        / "Armchair"
+        / "Nanotube_9_9"
+        / "vasprun.xml",
+    }
+
     names = []
     for source_name, system_name in systems.items():
-        atoms = _read_reference_or_warn(bulk_root / source_name / "vasprun.xml")
+        source = overrides.get(source_name, bulk_root / source_name / "vasprun.xml")
+        atoms = _read_reference_or_warn(source)
         if atoms is None:
             continue
         write_system(benchmark_dir / system_name, [atoms])
@@ -235,10 +251,13 @@ def extract_surface_energies(staging_root: Path) -> None:
         shutil.rmtree(benchmark_dir)
 
     dft_root = SRC / "Surfaces" / "DFT_Reference"
+    # Diamond {111} is omitted: its as_cut and relaxed vasprun.xml are truncated
+    # mid-SCF with no closing </calculation> or </modeling>, no final structure and no
+    # forces. The scheduler log Not_A_VASP_Calculation_.o729670 shows the job never ran.
+    # Only the bulk survived, which alone cannot give a surface energy.
     facet_systems = {
         "Diamond_100": ("Diamond/100", ("bulk", "as_cut", "relaxed")),
         "Diamond_110": ("Diamond/110", ("bulk", "as_cut", "relaxed")),
-        "Diamond_111": ("Diamond/111", ("bulk", "as_cut", "relaxed")),
         "Graphite_0001": ("Graphite/0001", ("bulk", "as_cut", "actual_relaxed")),
     }
 
