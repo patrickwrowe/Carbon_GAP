@@ -67,6 +67,37 @@ def _read_reference_or_warn(vasprun_path: Path) -> Atoms | None:
         return None
 
 
+def scf_converged(vasprun_path: Path, default_nelm: int = 60) -> bool:
+    """
+    Report whether a static VASP run reached electronic convergence.
+
+    An unconverged run exhausts NELM electronic steps instead of meeting EDIFF.
+    Valid only for single-ionic-step runs, which is what the barrier scans are.
+
+    Parameters
+    ----------
+    vasprun_path
+        Path to a vasprun.xml file.
+    default_nelm
+        Electronic step limit assumed when the INCAR does not set NELM.
+
+    Returns
+    -------
+    bool
+        True if the run used fewer than NELM electronic steps.
+    """
+    nelm = default_nelm
+    incar_path = vasprun_path.parent / "INCAR"
+    if incar_path.is_file():
+        for line in incar_path.read_text().splitlines():
+            key, _, value = line.partition("=")
+            if key.strip().upper() == "NELM":
+                nelm = int(value.split()[0])
+                break
+    steps = vasprun_path.read_text().count("<scstep>")
+    return steps < nelm
+
+
 def assert_no_forbidden_files(staging_dir: Path) -> None:
     """
     Fail if any licensed VASP pseudopotential file has been staged.
@@ -428,9 +459,11 @@ def extract_barriers(staging_root: Path) -> None:
         )
         frames = []
         for step_dir in step_dirs:
-            atoms = _read_reference_or_warn(step_dir / "vasprun.xml")
+            vasprun_path = step_dir / "vasprun.xml"
+            atoms = _read_reference_or_warn(vasprun_path)
             if atoms is not None:
                 atoms.info["scan_point"] = f"step_{step_dir.name}"
+                atoms.info["scf_converged"] = scf_converged(vasprun_path)
                 frames.append(atoms)
         write_system(benchmark_dir / system_name, frames)
         names.append(system_name)
@@ -449,9 +482,11 @@ def extract_barriers(staging_root: Path) -> None:
     )
     frames = []
     for frame_dir in frame_dirs:
-        atoms = _read_reference_or_warn(frame_dir / "vasprun.xml")
+        vasprun_path = frame_dir / "vasprun.xml"
+        atoms = _read_reference_or_warn(vasprun_path)
         if atoms is not None:
             atoms.info["scan_point"] = f"step_{frame_dir.name}"
+            atoms.info["scf_converged"] = scf_converged(vasprun_path)
             frames.append(atoms)
     write_system(benchmark_dir / "Fullerene_Sw_Transition_Optim", frames)
     names.append("Fullerene_Sw_Transition_Optim")
