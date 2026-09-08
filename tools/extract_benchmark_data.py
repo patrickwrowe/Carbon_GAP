@@ -22,9 +22,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_ROOT = REPO_ROOT / "ml_peg_benchmark_data"
 STAGING_ROOT = DATA_ROOT / "staging"
 
-NANOTUBE_SINGLE_ATOM_ENERGY_EV = 0.94664775
-
-
 def read_reference(vasprun_path: Path) -> Atoms:
     """
     Read the final ionic step of a VASP run as an ASE Atoms object.
@@ -499,7 +496,7 @@ def extract_barriers(staging_root: Path) -> None:
 
 def extract_nanotube_formation_energies(staging_root: Path) -> None:
     """
-    Extract single-point nanotube energies plus the isolated-atom reference.
+    Extract single-point nanotube energies plus the graphene reference.
 
     Parameters
     ----------
@@ -533,12 +530,15 @@ def extract_nanotube_formation_energies(staging_root: Path) -> None:
         write_system(benchmark_dir / system_name, [atoms])
         names.append(system_name)
 
-    benchmark_dir.mkdir(parents=True, exist_ok=True)
-    isolated_atom = Atoms(
-        "C", positions=[[10.0, 10.0, 10.0]], cell=[20.0, 20.0, 20.0], pbc=True
+    # Tube energies are reported relative to graphene, so the flat-sheet limit
+    # ships alongside them. Same structure as the lattice_parameters reference.
+    graphene = _read_reference_or_warn(
+        SRC / "Tests" / "lattice_parameters" / "Bulk_Structures" / "Graphene"
+        / "vasprun.xml"
     )
-    isolated_atom.info["REF_energy"] = NANOTUBE_SINGLE_ATOM_ENERGY_EV
-    write(benchmark_dir / "isolated_atom.xyz", isolated_atom, format="extxyz")
+    if graphene is not None:
+        write_system(benchmark_dir / "Graphene", [graphene])
+        names.append("Graphene")
 
     write_list(benchmark_dir, names)
 
