@@ -217,7 +217,7 @@ def zip_benchmark(benchmark: str) -> None:
 
 def extract_lattice_parameters(staging_root: Path) -> None:
     """
-    Extract the eight bulk/molecular reference structures for lattice_parameters.
+    Extract the seven bulk/molecular reference structures for lattice_parameters.
 
     Parameters
     ----------
@@ -230,7 +230,6 @@ def extract_lattice_parameters(staging_root: Path) -> None:
         "Diamond": "Diamond",
         "Lonsdaleite": "Lonsdaleite",
         "Nanotube_9_0": "Nanotube-(9,0)",
-        "Nanotube_9_9": "Nanotube-(9,9)",
         "C60": "C60",
         "C100": "C100",
     }
@@ -240,24 +239,9 @@ def extract_lattice_parameters(staging_root: Path) -> None:
 
     bulk_root = SRC / "Tests" / "lattice_parameters" / "Bulk_Structures"
 
-    # The Bulk_Structures (9,9) cell is a defect-generation working copy: 174 atoms
-    # with 6 two-coordinated sites, where an intact 5-cell armchair tube needs 180.
-    # The formation-energy reference is an intact 36-atom unit cell at the same level
-    # of theory (optB88-vdW, ENCUT 500, ISPIN 1, ISIF 2).
-    overrides = {
-        "Nanotube_9_9": SRC
-        / "Tests"
-        / "nanotubes_formation_energy"
-        / "Reference"
-        / "Armchair"
-        / "Nanotube_9_9"
-        / "vasprun.xml",
-    }
-
     names = []
     for source_name, system_name in systems.items():
-        source = overrides.get(source_name, bulk_root / source_name / "vasprun.xml")
-        atoms = _read_reference_or_warn(source)
+        atoms = _read_reference_or_warn(bulk_root / source_name / "vasprun.xml")
         if atoms is None:
             continue
         write_system(benchmark_dir / system_name, [atoms])
@@ -344,18 +328,16 @@ def extract_defect_energies(staging_root: Path) -> None:
         shutil.rmtree(benchmark_dir)
 
     pristine_root = SRC / "Defect_Structure" / "Reference_Structures"
-    defect_root = (
-        SRC
-        / "Tests"
-        / "diamond_defect_energies"
-        / "Reference_Configs"
-        / "Defect_Structures"
-    )
+    # The 2021 scripts take the DFT reference from Defects/Defect_Structures and use
+    # Reference_Configs only for the model's starting POSCAR. The two hold different
+    # calculations: Reference_Configs has the relaxation runs, several of which stopped
+    # short, while Defect_Structures has the single points at the settled geometries.
+    defect_root = SRC / "Defect_Structure" / "Defect_Structures"
 
     hosts = {
         "Diamond_Large": {
             "Diamond_Split_Interstitial": (
-                "Defective_Diamond/Diamond_Split_Interstitial"
+                "Diamond_Large/Diamond_Split_Interstitial"
             ),
             "Diamond_Monovacancy": "Diamond_Large/Diamond_Monovacancy",
             "Diamond_Divacancy": "Diamond_Large/Diamond_Divacancy",
