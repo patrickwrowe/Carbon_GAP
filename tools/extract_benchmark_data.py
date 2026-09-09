@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import tempfile
 import zipfile
@@ -10,6 +11,7 @@ from warnings import warn
 
 from ase import Atoms
 from ase.io import read, write
+import numpy as np
 
 SRC = Path(
     "/data/pr_archive/source_drives/sdb2_Patrick_4Tb_BU/Happy_Electron_Backup"
@@ -62,6 +64,105 @@ def _read_reference_or_warn(vasprun_path: Path) -> Atoms | None:
     except Exception as exc:  # noqa: BLE001
         warn(f"Failed to read reference {vasprun_path}: {exc}", stacklevel=2)
         return None
+
+
+def read_kpoint_mesh(run_dir: Path) -> str | None:
+    """
+    Read the Monkhorst-Pack subdivisions from a run's KPOINTS file.
+
+    Parameters
+    ----------
+    run_dir
+        Directory holding a VASP KPOINTS file.
+
+    Returns
+    -------
+    str or None
+        Subdivisions as "2x2x2", or None if the file is absent or malformed. Joined
+        with "x" rather than spaces so extxyz round-trips it as a string, not an array.
+    """
+    try:
+        return "x".join((run_dir / "KPOINTS").read_text().splitlines()[3].split())
+    except (OSError, IndexError):
+        return None
+
+
+def select_defect_reference(
+    single_point_dir: Path, dataset_dir: Path, pristine_mesh: str | None
+) -> Path | None:
+    """
+    Choose the defect calculation that pairs with the pristine host.
+
+    A formation energy subtracts the pristine host from the defect, so the two must
+    share a k-point mesh for the sampling error to cancel. The deliberate NSW = 0
+    single point is preferred when it already samples the pristine's mesh; otherwise
+    the last usable snapshot of the relaxation, which was re-evaluated at that mesh.
+
+    Parameters
+    ----------
+    single_point_dir
+        Directory holding the NSW = 0 single point at the relaxed geometry.
+    dataset_dir
+        Directory holding the Training_N snapshots of the relaxation.
+    pristine_mesh
+        K-point mesh of the pristine host, from `read_kpoint_mesh`.
+
+    Returns
+    -------
+    Path or None
+        Directory of the chosen calculation, or None if nothing is readable.
+    """
+    if read_kpoint_mesh(single_point_dir) == pristine_mesh and _is_readable(
+        single_point_dir
+    ):
+        return single_point_dir
+
+    if dataset_dir.is_dir():
+        snapshots = sorted(
+            (
+                path
+                for path in dataset_dir.iterdir()
+                if re.fullmatch(r"Training_\d+", path.name)
+            ),
+            key=lambda path: int(path.name.split("_")[1]),
+            reverse=True,
+        )
+        for snapshot in snapshots:
+            if read_kpoint_mesh(snapshot) == pristine_mesh and _is_readable(snapshot):
+                return snapshot
+
+    if _is_readable(single_point_dir):
+        warn(
+            f"No mesh-matched defect calculation for {single_point_dir.name}; "
+            f"falling back to {read_kpoint_mesh(single_point_dir)} against a "
+            f"{pristine_mesh} host",
+            stacklevel=2,
+        )
+        return single_point_dir
+    return None
+
+
+def _is_readable(run_dir: Path) -> bool:
+    """
+    Report whether a run directory yields a structure with energy and forces.
+
+    Parameters
+    ----------
+    run_dir
+        Directory holding a vasprun.xml.
+
+    Returns
+    -------
+    bool
+        True if the final ionic step parses with both energy and forces.
+    """
+    try:
+        atoms = read(run_dir / "vasprun.xml", index=-1)
+        atoms.get_potential_energy()
+        atoms.get_forces()
+    except Exception:  # noqa: BLE001
+        return False
+    return True
 
 
 def scf_converged(vasprun_path: Path, default_nelm: int = 60) -> bool:
@@ -328,11 +429,16 @@ def extract_defect_energies(staging_root: Path) -> None:
         shutil.rmtree(benchmark_dir)
 
     pristine_root = SRC / "Defect_Structure" / "Reference_Structures"
-    # The 2021 scripts take the DFT reference from Defects/Defect_Structures and use
-    # Reference_Configs only for the model's starting POSCAR. The two hold different
-    # calculations: Reference_Configs has the relaxation runs, several of which stopped
-    # short, while Defect_Structures has the single points at the settled geometries.
+    # Defect_Structures holds the NSW = 0 single points at the relaxed geometries, which
+    # is what the 2021 scripts read. Reference_Configs holds the relaxations that
+    # produced those geometries, plus Training_N snapshots re-evaluated at the host's own
+    # k-point mesh. Graphite's single points sample 2x2x1 against a 2x2x2 host, so the
+    # snapshots are what pair with it; see select_defect_reference.
     defect_root = SRC / "Defect_Structure" / "Defect_Structures"
+    relaxation_root = (
+        SRC / "Tests" / "diamond_defect_energies" / "Reference_Configs"
+        / "Defect_Structures"
+    )
 
     hosts = {
         "Diamond_Large": {
@@ -386,17 +492,32 @@ def extract_defect_energies(staging_root: Path) -> None:
 
     names = []
     for pristine_name, defects in hosts.items():
-        pristine_atoms = _read_reference_or_warn(
-            pristine_root / pristine_name / "vasprun.xml"
-        )
+        pristine_dir = pristine_root / pristine_name
+        pristine_mesh = read_kpoint_mesh(pristine_dir)
+        pristine_atoms = _read_reference_or_warn(pristine_dir / "vasprun.xml")
         if pristine_atoms is not None:
             pristine_atoms.info["structure_role"] = "pristine_host"
+            pristine_atoms.info["kpoint_mesh"] = pristine_mesh
+            pristine_atoms.info["max_force_ev_ang"] = float(
+                np.abs(pristine_atoms.arrays["REF_forces"]).max()
+            )
         for system_name, relative_defect_path in defects.items():
-            defect_atoms = _read_reference_or_warn(
-                defect_root / relative_defect_path / "vasprun.xml"
+            defect_dir = select_defect_reference(
+                defect_root / relative_defect_path,
+                relaxation_root / relative_defect_path / "Dataset",
+                pristine_mesh,
+            )
+            defect_atoms = (
+                None
+                if defect_dir is None
+                else _read_reference_or_warn(defect_dir / "vasprun.xml")
             )
             if defect_atoms is not None:
                 defect_atoms.info["structure_role"] = "defect"
+                defect_atoms.info["kpoint_mesh"] = read_kpoint_mesh(defect_dir)
+                defect_atoms.info["max_force_ev_ang"] = float(
+                    np.abs(defect_atoms.arrays["REF_forces"]).max()
+                )
             frames = [
                 atoms
                 for atoms in (pristine_atoms, defect_atoms)
